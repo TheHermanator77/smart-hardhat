@@ -2,14 +2,17 @@ const mysql = require("mysql2/promise");
 require("dotenv").config();
 
 const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+  host: "student-databases.cvode4s4cwrc.us-west-2.rds.amazonaws.com",
+  user: "kyleherman",
+  password: 'CQnB2CQREOWABG8rLO5bJYt8DvgPQgrILwZ',
+  database: "kyleherman",
   port: 3306,
-  ssl: false, // matches your server config
+
+  charset: "utf8mb4",
+
   waitForConnections: true,
-  connectionLimit: 10
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
 module.exports = pool;

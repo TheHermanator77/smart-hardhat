@@ -7,7 +7,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --- Simple API Key Middleware ---
+// Simple API key protection
 function requireKey(req, res, next) {
   const key = req.headers["x-api-key"];
   if (key !== process.env.API_KEY) {
@@ -16,30 +16,31 @@ function requireKey(req, res, next) {
   next();
 }
 
-// ---------------- HEALTH ----------------
+// Health check (for Render)
 app.get("/health", (req, res) => {
   res.json({ status: "OK" });
 });
 
-// ---------------- INSERT (Arduino) ----------------
+// Arduino → INSERT impact event
 app.post("/api/impact", requireKey, async (req, res) => {
   try {
     const { impact, light, g_force, light_raw } = req.body;
 
     const [result] = await pool.query(
-      `INSERT INTO impact_events (hat_id, impact, light_state, g_force, light_raw)
-       VALUES (1, ?, ?, ?, ?)`,
+      `INSERT INTO impact_events 
+      (hat_id, impact, light_state, g_force, light_raw)
+      VALUES (1, ?, ?, ?, ?)`,
       [impact, light, g_force, light_raw]
     );
 
     res.status(201).json({ inserted: result.insertId });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Database insert failed" });
+    res.status(500).json({ error: "Insert failed" });
   }
 });
 
-// ---------------- GET LATEST (Alexa) ----------------
+// Alexa → GET latest event
 app.get("/api/impact/latest", requireKey, async (req, res) => {
   try {
     const [rows] = await pool.query(
@@ -51,11 +52,12 @@ app.get("/api/impact/latest", requireKey, async (req, res) => {
 
     res.json(rows[0] || {});
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Query failed" });
   }
 });
 
-// ---------------- UPDATE HARD HAT ----------------
+// UPDATE hard hat info
 app.put("/api/hardhat", requireKey, async (req, res) => {
   try {
     const { nickname, owner_name } = req.body;
@@ -67,21 +69,23 @@ app.put("/api/hardhat", requireKey, async (req, res) => {
 
     res.json({ updated: true });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Update failed" });
   }
 });
 
-// ---------------- DELETE EVENTS ----------------
+// DELETE all impact events
 app.delete("/api/events", requireKey, async (req, res) => {
   try {
     const [result] = await pool.query(`DELETE FROM impact_events`);
     res.json({ deleted: result.affectedRows });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Delete failed" });
   }
 });
 
-// ---------------- INNER JOIN (RUBRIC PROOF) ----------------
+// INNER JOIN route (rubric proof)
 app.get("/api/events", requireKey, async (req, res) => {
   try {
     const [rows] = await pool.query(
@@ -99,10 +103,12 @@ app.get("/api/events", requireKey, async (req, res) => {
 
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: "Join query failed" });
+    console.error(err);
+    res.status(500).json({ error: "Join failed" });
   }
 });
 
+// Start server (Render requires this)
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
